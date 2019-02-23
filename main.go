@@ -11,7 +11,9 @@ import (
 
 const APIv = "5.92"
 const APIServer = "https://api.vk.com"
-const BotAPIUrl = APIServer + "/method/groups.getLongPollServer"
+const ServerReqURL = APIServer + "/method/groups.getLongPollServer"
+const Wait = "25"
+const EventsReqURL = "%s?act=a_check&key=%s&ts=%s&wait=" + Wait
 
 type Configuration struct {
 	API_KEY, GroupID string
@@ -25,33 +27,49 @@ type LongPollParam struct {
 
 type APIResponse struct {
 	Response LongPollParam `json:"response"`
+	TS       string        `json:"ts"`
+	Updates  []string      `json:"updates"`
+	Failed   int           `json:"failed"`
 }
 
-func GetLongPollServer(api_key string, group_id string) (LongPollParam, error) {
-	var params APIResponse
-	path := "?group_id=" + group_id + "&access_token=" + api_key + "&v=" + APIv
-	url := BotAPIUrl + path
+type VKPollClient struct {
+	APIKey, GroupID  string
+	SKey, Server, TS string
+}
+
+func (vkcli *VKPollClient) GetLongPollServer() {
+	var answ APIResponse
+	path := "?group_id=" + vkcli.GroupID + "&access_token=" + vkcli.APIKey + "&v=" + APIv
+	url := ServerReqURL + path
 	res, err := http.Get(url)
 	defer res.Body.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
 	body, _ := ioutil.ReadAll(res.Body)
-	jsonErr := json.Unmarshal([]byte(body), &params)
+	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
-	return params.Response, err
+	vkcli.SKey = answ.Response.Key
+	vkcli.Server = answ.Response.Server
+	vkcli.TS = answ.Response.TS
 }
 
-func test(resp string) {
-	w := APIResponse{}
-	e := []byte(resp)
-	jsonErr := json.Unmarshal(e, &w)
+func (vkcli VKPollClient) GetUpdates() APIResponse {
+	var updates APIResponse
+	url := fmt.Sprintf(EventsReqURL, vkcli.Server, vkcli.SKey, vkcli.TS)
+	res, err := http.Get(url)
+	defer res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	body, _ := ioutil.ReadAll(res.Body)
+	jsonErr := json.Unmarshal([]byte(body), &updates)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
-	fmt.Println(w)
+	return (updates)
 }
 
 func main() {
@@ -67,6 +85,10 @@ func main() {
 		fmt.Println("error loading configuration:", err)
 	}
 
-	params, _ := GetLongPollServer(config.API_KEY, config.GroupID)
-	fmt.Println(params.Key)
+	vkcli := VKPollClient{APIKey: config.API_KEY, GroupID: config.GroupID}
+	vkcli.GetLongPollServer()
+
+	for {
+		fmt.Println(vkcli.GetUpdates())
+	}
 }
