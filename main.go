@@ -1,4 +1,4 @@
-package main
+package gosocial
 
 import (
 	"encoding/json"
@@ -101,25 +101,4 @@ func (vkcli *VKPollClient) GetUpdates() ([]UpdateEvent, int) {
 	}
 	vkcli.TS = api_resp.TS
 	return api_resp.Updates, 0
-}
-
-func main() {
-	var (
-		config Configuration
-	)
-	file, _ := os.Open("conf.json")
-	defer file.Close()
-	byteValue, _ := ioutil.ReadAll(file)
-	err := json.Unmarshal(byteValue, &config)
-
-	if err != nil {
-		fmt.Println("error loading configuration:", err)
-	}
-
-	vkcli := VKPollClient{APIKey: config.API_KEY, GroupID: config.GroupID}
-	vkcli.GetLongPollServer()
-
-	for {
-		fmt.Println(vkcli.GetUpdates())
-	}
 }
