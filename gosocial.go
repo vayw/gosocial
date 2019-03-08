@@ -34,7 +34,7 @@ type APIResponse struct {
 	Failed   int           `json:"failed"`
 }
 
-type VKPollClient struct {
+type VKClient struct {
 	APIKey, GroupID  string
 	SKey, Server, TS string
 }
@@ -51,7 +51,7 @@ type GroupEvent struct {
 	LeaveType int    `json:"self,omitempty"`
 }
 
-func (vkcli *VKPollClient) GetLongPollServer() {
+func (vkcli *VKClient) GetLongPollServer() {
 	var answ APIResponse
 	path := "?group_id=" + vkcli.GroupID + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	url := ServerReqURL + path
@@ -70,7 +70,7 @@ func (vkcli *VKPollClient) GetLongPollServer() {
 	vkcli.TS = answ.Response.TS
 }
 
-func (vkcli *VKPollClient) GetUpdates() ([]UpdateEvent, int) {
+func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 	var api_resp APIResponse
 	url := fmt.Sprintf(EventsReqURL, vkcli.Server, vkcli.SKey, vkcli.TS)
 	res, err := http.Get(url)
