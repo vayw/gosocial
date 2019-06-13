@@ -7,9 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
-const APIv = "5.92"
+const APIv = "5.95"
 const APIServer = "https://api.vk.com"
 const ServerReqURL = APIServer + "/method/groups.getLongPollServer"
 const Wait = "25"
@@ -31,12 +32,16 @@ type APIResponse struct {
 	Response LongPollParam `json:"response"`
 	TS       string        `json:"ts"`
 	Updates  []UpdateEvent `json:"updates"`
-	Failed   int           `json:"failed"`
+}
+
+type APIResponseF struct {
+	TS     int64 `json:"ts"`
+	Failed int   `json:"failed"`
 }
 
 type VKClient struct {
 	APIKey, GroupID  string
-	SKey, Server, TS string
+	SKey, Server, Ts string
 }
 
 type UpdateEvent struct {
@@ -76,29 +81,33 @@ func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 	res, err := http.Get(url)
 	defer res.Body.Close()
 	if err != nil {
-		logger.Print("[ERR]", err)
+		logger.Print("[ERR] ::GetUpdates:: ", err)
 	}
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &api_resp)
 	if jsonErr != nil {
-		logger.Print("[ERR]", jsonErr)
+		var api_resp_f APIResponseF
+		jsonErr := json.Unmarshal([]byte(body), &api_resp_f)
+		if jsonErr != nil {
+			logger.Print("[ERR] ::GetUpdates:: ", jsonErr)
+		}
+		switch api_resp_f.Failed {
+		case 1:
+			// history is outdated or partly lost, try again with TS
+			// from current answer
+			vkcli.TS = strconv.FormatInt(api_resp_f.TS, 10)
+			return nil, 1
+		case 2:
+			// session key is expired
+			vkcli.GetLongPollServer()
+			return nil, 2
+		case 3:
+			// history is lost, request new key and ts
+			vkcli.GetLongPollServer()
+			return nil, 3
+		}
 	}
 
-	switch api_resp.Failed {
-	case 1:
-		// history is outdated or partly lost, try again with TS
-		// from current answer
-		vkcli.TS = api_resp.TS
-		return nil, 1
-	case 2:
-		// session key is expired
-		vkcli.GetLongPollServer()
-		return nil, 2
-	case 3:
-		// history is lost, request new key and ts
-		vkcli.GetLongPollServer()
-		return nil, 3
-	}
 	vkcli.TS = api_resp.TS
 	return api_resp.Updates, 0
 }
