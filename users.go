@@ -2,6 +2,7 @@ package gosocial
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 )
@@ -14,6 +15,7 @@ type User struct {
 	Closed      bool   `json:"is_closed"`
 	CanAccess   bool   `json:"can_access_closed"`
 	Photo100    string `json:"photo_100"`
+	Sex         int    `json:"sex"`
 }
 
 func (vkcli *VKClient) GetUserData(uids string) ([]User, error) {
@@ -22,7 +24,7 @@ func (vkcli *VKClient) GetUserData(uids string) ([]User, error) {
 	}
 	var params string
 	method := "/method/users.get?"
-	params = "user_ids=" + uids + "&fields=photo_100"
+	params = "user_ids=" + uids + "&fields=photo_100,sex"
 	url := APIServer + method + params + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	res, err := http.Get(url)
 	defer res.Body.Close()
@@ -33,6 +35,7 @@ func (vkcli *VKClient) GetUserData(uids string) ([]User, error) {
 	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {
 		logger.Print("[ERR]", jsonErr)
+		return []User{}, errors.New("Failed to get userdata")
 	}
 	return answ.Response, nil
 }
