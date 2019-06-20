@@ -41,7 +41,7 @@ type APIResponseF struct {
 
 type VKClient struct {
 	APIKey, GroupID  string
-	SKey, Server, Ts string
+	SKey, Server, TS string
 }
 
 type UpdateEvent struct {
@@ -78,6 +78,7 @@ func (vkcli *VKClient) GetLongPollServer() {
 func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 	var api_resp APIResponse
 	url := fmt.Sprintf(EventsReqURL, vkcli.Server, vkcli.SKey, vkcli.TS)
+	logger.Print("::GetUpdates:: query= ", url)
 	res, err := http.Get(url)
 	defer res.Body.Close()
 	if err != nil {
@@ -86,6 +87,7 @@ func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &api_resp)
 	if jsonErr != nil {
+		logger.Print("UPDATES: can't parse response")
 		var api_resp_f APIResponseF
 		jsonErr := json.Unmarshal([]byte(body), &api_resp_f)
 		if jsonErr != nil {
@@ -108,6 +110,7 @@ func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 		}
 	}
 
+	logger.Print("::GetUpdates:: updates=", api_resp)
 	vkcli.TS = api_resp.TS
 	return api_resp.Updates, 0
 }
