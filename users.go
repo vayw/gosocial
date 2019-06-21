@@ -3,6 +3,7 @@ package gosocial
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -16,15 +17,22 @@ type User struct {
 	CanAccess   bool   `json:"can_access_closed"`
 	Photo100    string `json:"photo_100"`
 	Sex         int    `json:"sex"`
+	About       string `json:"about"`
+	Books       string `json:"books"`
+	HomeTown    string `json:"home_town"`
+	Interests   string `json:"interests"`
 }
 
-func (vkcli *VKClient) GetUserData(uids string) ([]User, error) {
+func (vkcli *VKClient) GetUserData(uids string, fields string) ([]User, error) {
 	var answ struct {
 		Response []User `json:"response"`
 	}
-	var params string
+	var params = "user_ids=%s&fields=%s"
 	method := "/method/users.get?"
-	params = "user_ids=" + uids + "&fields=photo_100,sex"
+	if fields == "" {
+		fields = "photo_100"
+	}
+	params = fmt.Sprintf(params, uids, fields)
 	url := APIServer + method + params + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	res, err := http.Get(url)
 	defer res.Body.Close()
