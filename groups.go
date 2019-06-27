@@ -53,10 +53,10 @@ func (vkcli *VKClient) QueryMembers(count int, offset int) (Members, error) {
 	params := `group_id=%s&count=%d&offset=%d`
 	url := APIServer + method + fmt.Sprintf(params, vkcli.GroupID, 300, 0) + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	res, err := http.Get(url)
-	defer res.Body.Close()
 	if err != nil {
 		logger.Print("[ERR} ", err)
 	}
+	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {

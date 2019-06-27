@@ -32,6 +32,7 @@ type APIResponse struct {
 	Response LongPollParam `json:"response"`
 	TS       string        `json:"ts"`
 	Updates  []UpdateEvent `json:"updates"`
+	Failed   int           `json:"failed"`
 }
 
 type APIResponseF struct {
@@ -60,16 +61,18 @@ func (vkcli *VKClient) GetLongPollServer() {
 	var answ APIResponse
 	path := "?group_id=" + vkcli.GroupID + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	url := ServerReqURL + path
+	logger.Print("::GetLongPollServer:: Query: ", url)
 	res, err := http.Get(url)
-	defer res.Body.Close()
 	if err != nil {
-		logger.Print("[ERR} ", err)
+		logger.Print("::GetLongPollServer:: [ERR} ", err)
 	}
+	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {
-		logger.Print("[ERR]", jsonErr)
+		logger.Print("::GetLongPollServer:: [ERR]", jsonErr)
 	}
+	logger.Print("::GetLongPollServer:: Response: ", answ.Response)
 	vkcli.SKey = answ.Response.Key
 	vkcli.Server = answ.Response.Server
 	vkcli.TS = answ.Response.TS
@@ -80,14 +83,18 @@ func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 	url := fmt.Sprintf(EventsReqURL, vkcli.Server, vkcli.SKey, vkcli.TS)
 	logger.Print("::GetUpdates:: query= ", url)
 	res, err := http.Get(url)
-	defer res.Body.Close()
 	if err != nil {
 		logger.Print("[ERR] ::GetUpdates:: ", err)
 	}
+	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
+	logger.Print("::GetUpdates:: response string: ", string(body))
 	jsonErr := json.Unmarshal([]byte(body), &api_resp)
 	if jsonErr != nil {
-		logger.Print("UPDATES: can't parse response")
+		logger.Print("[INFO] ::GetUpdates:: ", jsonErr)
+		api_resp.Failed = 1
+	}
+	if api_resp.Failed != 0 {
 		var api_resp_f APIResponseF
 		jsonErr := json.Unmarshal([]byte(body), &api_resp_f)
 		if jsonErr != nil {

@@ -35,10 +35,10 @@ func (vkcli *VKClient) GetUserData(uids string, fields string) ([]User, error) {
 	params = fmt.Sprintf(params, uids, fields)
 	url := APIServer + method + params + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	res, err := http.Get(url)
-	defer res.Body.Close()
 	if err != nil {
 		logger.Print("[ERR} ", err)
 	}
+	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {
