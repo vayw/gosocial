@@ -37,6 +37,7 @@ func (vkcli *VKClient) GetUserData(uids string, fields string) ([]User, error) {
 	res, err := http.Get(url)
 	if err != nil {
 		logger.Print("[ERR} ", err)
+		return nil, err
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)

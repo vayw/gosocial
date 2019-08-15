@@ -55,6 +55,7 @@ func (vkcli *VKClient) QueryMembers(count int, offset int) (Members, error) {
 	res, err := http.Get(url)
 	if err != nil {
 		logger.Print("[ERR} ", err)
+		return Members{}, err
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)

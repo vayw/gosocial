@@ -2,6 +2,7 @@ package gosocial
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -57,7 +58,7 @@ type GroupEvent struct {
 	LeaveType int    `json:"self,omitempty"`
 }
 
-func (vkcli *VKClient) GetLongPollServer() {
+func (vkcli *VKClient) GetLongPollServer() error {
 	var answ APIResponse
 	path := "?group_id=" + vkcli.GroupID + "&access_token=" + vkcli.APIKey + "&v=" + APIv
 	url := ServerReqURL + path
@@ -65,26 +66,30 @@ func (vkcli *VKClient) GetLongPollServer() {
 	res, err := http.Get(url)
 	if err != nil {
 		logger.Print("::GetLongPollServer:: [ERR} ", err)
+		return err
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
 	jsonErr := json.Unmarshal([]byte(body), &answ)
 	if jsonErr != nil {
 		logger.Print("::GetLongPollServer:: [ERR]", jsonErr)
+		return errors.New("Failed to parse answer")
 	}
 	logger.Print("::GetLongPollServer:: Response: ", answ.Response)
 	vkcli.SKey = answ.Response.Key
 	vkcli.Server = answ.Response.Server
 	vkcli.TS = answ.Response.TS
+	return nil
 }
 
-func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
+func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, error) {
 	var api_resp APIResponse
 	url := fmt.Sprintf(EventsReqURL, vkcli.Server, vkcli.SKey, vkcli.TS)
 	logger.Print("::GetUpdates:: query= ", url)
 	res, err := http.Get(url)
 	if err != nil {
 		logger.Print("[ERR] ::GetUpdates:: ", err)
+		return nil, fmt.Errorf("VKClient GetUpdates: %v", err)
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
@@ -99,25 +104,24 @@ func (vkcli *VKClient) GetUpdates() ([]UpdateEvent, int) {
 		jsonErr := json.Unmarshal([]byte(body), &api_resp_f)
 		if jsonErr != nil {
 			logger.Print("[ERR] ::GetUpdates:: ", jsonErr)
+			return nil, fmt.Errorf("VKClient GetUpdates: %v", jsonErr)
 		}
 		switch api_resp_f.Failed {
 		case 1:
 			// history is outdated or partly lost, try again with TS
 			// from current answer
 			vkcli.TS = strconv.FormatInt(api_resp_f.TS, 10)
-			return nil, 1
+			return nil, errors.New("VKClient GetUpdates: history is outdated or partly lost")
 		case 2:
 			// session key is expired
-			vkcli.GetLongPollServer()
-			return nil, 2
+			return nil, errors.New("VKClient GetUpdates: session key has expired")
 		case 3:
 			// history is lost, request new key and ts
-			vkcli.GetLongPollServer()
-			return nil, 3
+			return nil, errors.New("VKClient GetUpdates: history is lost")
 		}
 	}
 
 	logger.Print("::GetUpdates:: updates=", api_resp)
 	vkcli.TS = api_resp.TS
-	return api_resp.Updates, 0
+	return api_resp.Updates, nil
 }
